@@ -8,6 +8,8 @@
  **********************************/
 
 #include "MP1Node.h"
+#include <csignal>
+
 
 /*
  * Note: You can change/add any functions in MP1Node.{h,cpp}
@@ -249,7 +251,6 @@ bool MP1Node::recvCallBack(void *env, char *data, int size ) {
     memcpy(&header, data, sizeof(MessageHdr) * sizeof(char));
 
 //    cout << header.msgType << endl;
-
     if (header.msgType == DUMMYLASTMSGTYPE) {
         // deserialize msg from memory
         Address addr;
@@ -276,15 +277,31 @@ bool MP1Node::recvCallBack(void *env, char *data, int size ) {
         sendJoinRepMsg(&addr);
 
         // log to debug log about new node join
-//        log->logNodeAdd(&memberNode->addr, &addr);
+        log->logNodeAdd(&memberNode->addr, &addr);
     } else if (header.msgType == JOINREP) {
         // get the member list
-//        vector<MemberListEntry> updatedMemberList;
-//        memcpy(&updatedMemberList, data + 1, sizeof(vector<MemberListEntry>));
-//        for (int i = 0; i < updatedMemberList.size(); i++) {
-//            cout << updatedMemberList[i].id << ", ";
+        auto *updatedMemberList = (vector<MemberListEntry> *)(data + sizeof(MessageHdr));
+//        cout << updatedMemberList->size() << endl;
+//        for (int i = 0; i < (*updatedMemberList).size(); i++) {
+//            cout << (*updatedMemberList)[i].id << ", ";
 //        }
+//        cout << endl;
+
         // update my member list: if new node, log
+        for (MemberListEntry updatedEntry : *updatedMemberList) {
+            bool found = false;
+            for (MemberListEntry myEntry : memberNode->memberList) {
+                if (myEntry.id == updatedEntry.id) {
+                    found = true;
+                }
+            }
+            if (!found) {
+                Address addr;
+                *(int *)(&addr.addr) = updatedEntry.getid();
+                *(short *)(&addr.addr[4]) = updatedEntry.getport();
+                log->logNodeAdd(&memberNode->addr, &addr);
+            }
+        }
 
     } else if (header.msgType == UPDATEREQ) {
         // update membership list
