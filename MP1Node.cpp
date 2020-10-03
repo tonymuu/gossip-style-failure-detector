@@ -347,13 +347,8 @@ void MP1Node::nodeLoopOps() {
         }
 
         auto hasFailed = failed.count(neighbour->id) != 0;
-        if (neighbour->timestamp < 5) {
-//            cout << "curr time " << currTime << ", my id " << id <<
-//            ", neighbour node id " << neighbour->id << " timestamp is " << neighbour->timestamp << endl;
-        }
         long timeSinceLastUpdate = currTime - neighbour->timestamp;
         if (hasFailed && currTime - failed[neighbour->id] >= TREMOVE) { // remove node
-//            cout << id<<" removing "<<neighbour->id<<" because time failed is "<<failed[neighbour->id]<<" and curr time "<<currTime<<endl;
             neighbour = memberNode->memberList.erase(neighbour);
             failed.erase(neighbour->id);
             log->logNodeRemove(&(memberNode->addr), &neighbourAddr);
@@ -361,7 +356,6 @@ void MP1Node::nodeLoopOps() {
         }
 
         if (!hasFailed && timeSinceLastUpdate >= TFAIL) { // if node has failed, we don't send msg to it
-//            cout << "Failing " << neighbour->id << " because current time = " << currTime << ", last update time =" << neighbour->timestamp << endl;
             failed[neighbour->id] = currTime;
             hasFailed = true;
         }
@@ -452,11 +446,9 @@ void MP1Node::deserializeAndUpdateMemberList(char *data, int size) {
             auto old = map[id];
             if (old->heartbeat < heartbeat) {
                 if (failed.count(id) > 0) {
-//                    cout<<"Unfailing node id "<<id<<" because received new heartbeat greater than existing"<<endl;
                     failed.erase(id);
                 }
                 old->setheartbeat(heartbeat);
-//                cout << "setting "<<id << " timestamp to " << currTime << endl;
                 old->settimestamp(currTime);
             }
         }
