@@ -160,7 +160,7 @@ int MP1Node::introduceSelfToGroup(Address *joinaddr) {
         msg = (MessageHdr *) malloc(msgsize * sizeof(char));
 
         // create JOINREQ message: format of data is {struct Address myaddr}
-        msg->msgType = JOINREQ;
+        msg->msgType = DUMMYLASTMSGTYPE;
         memcpy((char *)(msg+1), &memberNode->addr.addr, sizeof(memberNode->addr.addr));
         memcpy((char *)(msg+1) + 1 + sizeof(memberNode->addr.addr), &memberNode->heartbeat, sizeof(long));
 
@@ -243,6 +243,72 @@ bool MP1Node::recvCallBack(void *env, char *data, int size ) {
     /*
     * Your code goes here
     */
+
+    MessageHdr header;
+
+    memcpy(&header, data, sizeof(MessageHdr) * sizeof(char));
+
+//    cout << header.msgType << endl;
+
+    if (header.msgType == DUMMYLASTMSGTYPE) {
+        // deserialize msg from memory
+        Address addr;
+        addr.init();
+        long heartbeat = 0;
+        memcpy(&addr.addr, data + sizeof(MessageHdr), sizeof(addr.addr));
+        memcpy(&heartbeat, data + sizeof(MessageHdr) + sizeof(memberNode->addr.addr), sizeof(long));
+
+//        cout << addr.getAddress() << endl;
+//        cout << heartbeat << endl;
+
+        // add to my memberlist
+        int id = 0;
+        short port;
+        setIdAndPortFromAddress(addr, &id, &port);
+//        cout << id << endl;
+//        cout << port << endl;
+        MemberListEntry entry = MemberListEntry(id, port, heartbeat, par->getcurrtime());
+        memberNode->memberList.push_back(entry);
+
+//        cout << id << ":" << port << endl;
+
+        // send joinrep msg that includes my memberlist
+//        sendJoinRepMsg(&addr);
+
+        // log to debug log about new node join
+//        log->logNodeAdd(&memberNode->addr, &addr);
+    } else if (header.msgType == JOINREP) {
+        // get the member list
+        vector<MemberListEntry> updatedMemberList;
+        memcpy(&updatedMemberList, data + 1, sizeof(vector<MemberListEntry>));
+        for (int i = 0; i < updatedMemberList.size(); i++) {
+            cout << updatedMemberList[i].id << ", ";
+        }
+        // update my member list: if new node, log
+
+    } else if (header.msgType == UPDATEREQ) {
+        // update membership list
+    }
+}
+
+int MP1Node::sendJoinRepMsg(Address *toAddr) {
+    // the msg should a msg header and my member list
+    MessageHdr *msg;
+
+    size_t msgsize = sizeof(MessageHdr) + sizeof(memberNode->memberList) + 1;
+    msg = (MessageHdr *) malloc(msgsize * sizeof(char));
+
+    // create JOINREQ message: format of data is {struct Address myaddr}
+    msg->msgType = JOINREP;
+
+    memcpy((char *)(msg+1), &memberNode->memberList, sizeof(memberNode->memberList));
+
+    // send JOINREQ message to introducer member
+    emulNet->ENsend(&memberNode->addr, toAddr, (char *)msg, msgsize);
+
+    free(msg);
+
+    return 1;
 }
 
 /**
@@ -302,4 +368,9 @@ void MP1Node::printAddress(Address *addr)
 {
     printf("%d.%d.%d.%d:%d \n",  addr->addr[0],addr->addr[1],addr->addr[2],
                                                        addr->addr[3], *(short*)&addr->addr[4]) ;    
+}
+
+void MP1Node::setIdAndPortFromAddress(Address addr, int *id, short *port) {
+    memcpy(id, &addr.addr, sizeof(int));
+    memcpy(port, &addr.addr[4], sizeof(short));
 }
