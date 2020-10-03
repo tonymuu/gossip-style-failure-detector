@@ -248,7 +248,7 @@ bool MP1Node::recvCallBack(void *env, char *data, int size ) {
 
     MessageHdr header;
 
-    memcpy(&header, data, sizeof(MessageHdr) * sizeof(char));
+    memcpy(&header, data, sizeof(MessageHdr));
 
 //    cout << header.msgType << endl;
     if (header.msgType == DUMMYLASTMSGTYPE) {
@@ -257,7 +257,7 @@ bool MP1Node::recvCallBack(void *env, char *data, int size ) {
         addr.init();
         long heartbeat = 0;
         memcpy(&addr.addr, data + sizeof(MessageHdr), sizeof(addr.addr));
-        memcpy(&heartbeat, data + sizeof(MessageHdr) + sizeof(memberNode->addr.addr), sizeof(long));
+        memcpy(&heartbeat, data + sizeof(MessageHdr) + sizeof(addr.addr), sizeof(long));
 
 //        cout << addr.getAddress() << endl;
 //        cout << heartbeat << endl;
@@ -280,28 +280,54 @@ bool MP1Node::recvCallBack(void *env, char *data, int size ) {
         log->logNodeAdd(&memberNode->addr, &addr);
     } else if (header.msgType == JOINREP) {
         // get the member list
-        auto *updatedMemberList = (vector<MemberListEntry> *)(data + sizeof(MessageHdr));
-//        cout << updatedMemberList->size() << endl;
+
+        int id = 0;
+        short port = 0;
+        long heartbeat = 0;
+        memcpy(&id, data + sizeof(MessageHdr), sizeof(id));
+        memcpy(&port, data + sizeof(MessageHdr) + sizeof(id), sizeof(short));
+        memcpy(&heartbeat, data + sizeof(MessageHdr) + sizeof(id) + sizeof(port), sizeof(long));
+        cout << "id :" << id << endl;
+        cout << "port :" << port << endl;
+        cout << "heartbeat :" << heartbeat << endl;
+//        memcpy((char *)(data + 1), &memberNode->memberList, sizeof(MemberListEntry) * memberNode->memberList.size());
+//        cout << (*(vector<MemberListEntry> *)(data + sizeof(MessageHdr))).size() << endl;
+
+//        cout << (*(myV + 5 * sizeof(MemberListEntry))).id << endl;
+//        auto myList = *(vector<MemberListEntry> *)(data + sizeof(MessageHdr));
+//        memcpy((char *)data + sizeof(MessageHdr), &(memberNode->memberList[0]), sizeof(MemberListEntry));
+//        cout << (*(MemberListEntry *)((char *)data + sizeof(MessageHdr))).id << endl;
+
+//        auto *updatedMemberList = (vector<MemberListEntry> *)(data + sizeof(MessageHdr));
+//        auto listToSend = *(vector<MemberListEntry> *)(data + sizeof(MessageHdr));
+//        vector<MemberListEntry> *listToSend;
+//        memcpy(listToSend, data + sizeof(MessageHdr), sizeof(memberNode->memberList));
+//        cout << "size: " << listToSend->size() << endl << "printing list..." << endl;
+//        cout << "size: " << myList.size() << endl;
+//        for (int i = 0; i < myList.size(); i++) {
+//            cout << myList[i].id << ", ";
+//        }
+//        cout << endl;
 //        for (int i = 0; i < (*updatedMemberList).size(); i++) {
-//            cout << (*updatedMemberList)[i].id << ", ";
+//            cout << (*updatedMemberList)[i].timestamp << ", ";
 //        }
 //        cout << endl;
 
         // update my member list: if new node, log
-        for (MemberListEntry updatedEntry : *updatedMemberList) {
-            bool found = false;
-            for (MemberListEntry myEntry : memberNode->memberList) {
-                if (myEntry.id == updatedEntry.id) {
-                    found = true;
-                }
-            }
-            if (!found) {
-                Address addr;
-                *(int *)(&addr.addr) = updatedEntry.getid();
-                *(short *)(&addr.addr[4]) = updatedEntry.getport();
-                log->logNodeAdd(&memberNode->addr, &addr);
-            }
-        }
+//        for (MemberListEntry updatedEntry : *updatedMemberList) {
+//            bool found = false;
+//            for (MemberListEntry myEntry : memberNode->memberList) {
+//                if (myEntry.id == updatedEntry.id) {
+//                    found = true;
+//                }
+//            }
+//            if (!found) {
+//                Address addr;
+//                *(int *)(&addr.addr) = updatedEntry.getid();
+//                *(short *)(&addr.addr[4]) = updatedEntry.getport();
+//                log->logNodeAdd(&memberNode->addr, &addr);
+//            }
+//        }
 
     } else if (header.msgType == UPDATEREQ) {
         // update membership list
@@ -312,14 +338,62 @@ int MP1Node::sendJoinRepMsg(Address *toAddr) {
     // the msg should a msg header and my member list
     MessageHdr *msg;
 
-    size_t msgsize = sizeof(MessageHdr) + sizeof(memberNode->memberList) + 1;
+    size_t msgsize =
+            sizeof(MessageHdr) + (sizeof(int) + sizeof(short) + sizeof(long) + sizeof(long));
+//    size_t msgsize =
+//            sizeof(MessageHdr) + sizeof(MemberListEntry) * GOSSIP_SIZE;
+//    size_t msgsize =
+//            sizeof(MessageHdr) + sizeof(memberNode->memberList);
+//    size_t msgsize =
+//            sizeof(MessageHdr) + sizeof(memberNode);
+//    MemberListEntry* vec = new MemberListEntry[3];
+
     msg = (MessageHdr *) malloc(msgsize * sizeof(char));
 
     // create JOINREQ message: format of data is {struct Address myaddr}
     msg->msgType = JOINREP;
 
-    memcpy((char *)(msg+1), &memberNode->memberList, sizeof(memberNode->memberList));
+//    memcpy((char *)msg + sizeof(MessageHdr), memberNode, sizeof(memberNode));
+    int n = memberNode->memberList.size();
+    for(auto it = memberNode->memberList.begin(); it != memberNode->memberList.end(); ++it) {
+//        MemberListEntry mle = this->memberNode->memberList[n - i]
+        auto mle = it;
+//            cout << "id :" << it->id << endl;
+//    cout << "port :" << it->port << endl;
+//    cout << "heartbeat :" << it->heartbeat << endl;
+        memcpy((char *)(msg+1), &mle->id, sizeof(int));
+        memcpy((char *)(msg+1) + sizeof(int), &mle->port, sizeof(short));
+        memcpy((char *)(msg+1) + sizeof(int) + sizeof(short), &mle->heartbeat, sizeof(long));
+        memcpy((char *)(msg+1) + sizeof(int) + sizeof(short) + sizeof(long), &mle->timestamp, sizeof(long));
+    }
 
+//    int id = 0;
+//    short port = 0;
+//    long heartbeat = 0;
+//    memcpy(&id, (char *)msg + sizeof(MessageHdr), sizeof(id));
+//    memcpy(&port, (char *)msg + sizeof(MessageHdr) + sizeof(id), sizeof(short));
+//    memcpy(&heartbeat, (char *)msg + sizeof(MessageHdr) + sizeof(id) + sizeof(port), sizeof(long));
+//    cout << "id :" << id << endl;
+//    cout << "port :" << port << endl;
+//    cout << "heartbeat :" << heartbeat << endl;
+//    auto *newList = new MemberListEntry[GOSSIP_SIZE];
+//    memcpy(newList, memberNode->memberList.data(), sizeof(MemberListEntry) * GOSSIP_SIZE);
+//    memcpy(((char *)msg) + sizeof(MessageHdr), &newList, sizeof(MemberListEntry) * GOSSIP_SIZE);
+//    memcpy(((char *)msg) + sizeof(MessageHdr), &(memberNode->memberList), sizeof(memberNode->memberList));
+//
+//    auto listToSend = *(vector<MemberListEntry> *)((char *)msg + sizeof(MessageHdr));
+//    for (int i = 0; i < listToSend.size(); i++) {
+//        cout << listToSend[i].id << ", ";
+//    }
+//    cout << endl;
+
+//    memcpy((char *)(msg + 1), &memberNode->memberList, sizeof(MemberListEntry) * memberNode->memberList.size());
+//            cout << endl;
+//        for (int i = 0; i < (*(vector<MemberListEntry> *)(msg + 1)).size(); i++) {
+//            cout << (*(vector<MemberListEntry> *)(msg + 1))[i].id << ", ";
+//        }
+//    cout << (*(vector<MemberListEntry> *)(msg + 1)).size() << endl;
+//    cout << (*(MemberListEntry *)((char *)msg + sizeof(MessageHdr))).id << endl;
     // send JOINREQ message to introducer member
     emulNet->ENsend(&memberNode->addr, toAddr, (char *)msg, msgsize);
 
