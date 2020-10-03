@@ -273,17 +273,17 @@ bool MP1Node::recvCallBack(void *env, char *data, int size ) {
 //        cout << id << ":" << port << endl;
 
         // send joinrep msg that includes my memberlist
-//        sendJoinRepMsg(&addr);
+        sendJoinRepMsg(&addr);
 
         // log to debug log about new node join
 //        log->logNodeAdd(&memberNode->addr, &addr);
     } else if (header.msgType == JOINREP) {
         // get the member list
-        vector<MemberListEntry> updatedMemberList;
-        memcpy(&updatedMemberList, data + 1, sizeof(vector<MemberListEntry>));
-        for (int i = 0; i < updatedMemberList.size(); i++) {
-            cout << updatedMemberList[i].id << ", ";
-        }
+//        vector<MemberListEntry> updatedMemberList;
+//        memcpy(&updatedMemberList, data + 1, sizeof(vector<MemberListEntry>));
+//        for (int i = 0; i < updatedMemberList.size(); i++) {
+//            cout << updatedMemberList[i].id << ", ";
+//        }
         // update my member list: if new node, log
 
     } else if (header.msgType == UPDATEREQ) {
